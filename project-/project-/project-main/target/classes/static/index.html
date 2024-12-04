@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bibliotech</title>
+    <link rel="stylesheet" href="styles/styles.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=close" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=delete" />
+</head>
+<body>
+    <header class="header">
+        <div class="logo">
+            <h1> Bibliotech </h1>
+            <img src="assets/img/poi 2.png" alt="logo">
+        </div>
+    </header>
+
+    <div class="linha"></div>
+
+    <!-- Formulário para adicionar livro -->
+    <form id="book-form">
+        <input type="text" id="book-title" placeholder="Título do Livro" required>
+        <input type="text" id="book-author" placeholder="Nome do Autor" required>
+        <input type="text" id="book-genre" placeholder="Gênero do Livro" required>
+        <input type="number" id="book-quantity" placeholder="Quantidade" min="1" required>
+        <input type="text" id="book-image" placeholder="Imagem" required>
+        <button type="submit">Adicionar Livro</button>
+    </form>
+
+    <h2>Cadastrados</h2>
+
+    <!-- Tabela para exibir os livros -->
+    <table id="book-table">
+        <tr>
+            <th>ID</th>
+            <th>Nome do Autor</th>
+            <th>Título</th>
+            <th>Gênero</th>
+            <th>Quantidade</th>
+            <th>Imagem</th>  <!-- Coluna de imagem -->
+            <th>Ações</th>
+        </tr>
+    </table>
+
+    <div id="editModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>Editar Livro</h2>
+            <form id="editForm">
+                <label for="edit-author">Autor:</label>
+                <input type="text" id="edit-author" name="author">
+                <br>
+                <label for="edit-title">Título:</label>
+                <input type="text" id="edit-title" name="title">
+                <br>
+                <label for="edit-genre">Gênero:</label>
+                <input type="text" id="edit-genre" name="genre">
+                <br>
+                <label for="edit-quantity">Quantidade:</label>
+                <input type="number" id="edit-quantity" name="quantity">
+                <br>
+                <label for="edit-image">Imagem (URL):</label>
+                <input type="text" id="edit-image" name="image">
+                <br>
+                <button type="button" onclick="updateBook()">Salvar Alterações</button>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        // Captura o formulário e a tabela
+        const form = document.getElementById('book-form');
+        const bookTable = document.getElementById('book-table');
+        let editingRow = null;  // Para armazenar a linha sendo editada
+
+        // Função para adicionar livro à tabela
+        form.addEventListener('submit', function (e) {
+            e.preventDefault(); 
+
+            const title = document.getElementById('book-title').value;
+            const author = document.getElementById('book-author').value;
+            const genre = document.getElementById('book-genre').value;
+            const quantity = document.getElementById('book-quantity').value;
+            const image = document.getElementById('book-image').value;
+
+            
+            const formData = {
+            autor: author,
+            titulo: title,
+            nome: genre,
+            quantidade: parseInt(quantity),
+            imagURL: image,
+            };
+
+            fetch('http://localhost:8080/bibliotech', {
+            method: 'POST', 
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData), 
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Dados enviados com sucesso:', data);
+                window.location.reload();
+            })
+            .catch(error => {
+                console.error('Erro ao enviar os dados:', error);
+            });
+        });
+
+        function getAll() {
+            fetch('http://localhost:8080/bibliotech', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Dados:', data);
+                const table = document.getElementById('book-table');
+
+                data.forEach(book => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${book.id}</td>
+                        <td>${book.autor}</td>
+                        <td>${book.titulo}</td>
+                        <td>${book.nome}</td>
+                        <td>${book.quantidade}</td>
+                        <td><img src="${book.imagURL}" alt="Imagem do Livro" style="width: 50px; height: 50px;"></td>
+                        <td>
+                            <button onclick="editBook(${book.id})">Editar</button>
+                            <button onclick="deleteBook(${book.id})">Excluir</button>
+                        </td>
+                    `;
+                    table.appendChild(row);
+                });
+            })
+            .catch(error => {
+                console.error('Erro ao tentar ver os dados:', error);
+            });
+        }
+
+        getAll()
+
+        function deleteBook(id) {
+            fetch('http://localhost:8080/bibliotech/' + id, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Erro HTTP: ${response.status}`); 
+                }
+                return response.status === 204 ? null : response.json(); 
+            })
+            .then(data => {
+                if (data) {
+                    console.log('Resposta da API:', data); 
+                }
+                console.log(`Livro com ID ${id} deletado com sucesso.`);
+                window.location.reload();
+            })
+            .catch(error => {
+                console.error('Erro ao tentar remover os dados:', error);
+            });
+        }
+
+        function editBook(id) {
+            fetch(`http://localhost:8080/bibliotech/${id}`)
+                .then(response => response.json())
+                .then(book => {
+                    // Preenchendo os campos do modal com os dados do livro
+                    document.getElementById('edit-author').value = book.autor;
+                    document.getElementById('edit-title').value = book.titulo;
+                    document.getElementById('edit-genre').value = book.nome;
+                    document.getElementById('edit-quantity').value = book.quantidade;
+                    document.getElementById('edit-image').value = book.imagURL;
+
+                    // Armazena o ID do livro para uso posterior na atualização
+                    document.getElementById('editForm').dataset.bookId = id;
+
+                    // Exibe o modal
+                    document.getElementById('editModal').style.display = 'block';
+                })
+                .catch(error => console.error('Erro ao carregar dados do livro:', error));
+        }
+
+        function closeModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+        function updateBook() {
+            const id = document.getElementById('editForm').dataset.bookId; // Recupera o ID do livro
+            const updatedBook = {
+                autor: document.getElementById('edit-author').value,
+                titulo: document.getElementById('edit-title').value,
+                nome: document.getElementById('edit-genre').value,
+                quantidade: parseInt(document.getElementById('edit-quantity').value),
+                imagURL: document.getElementById('edit-image').value
+            };
+
+            fetch(`http://localhost:8080/bibliotech/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(updatedBook),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro ao atualizar o livro.');
+                }
+                return response.text(); // Lê a resposta como texto
+            })
+            .then(message => {
+                console.log('Resposta da API:', message); // Mostra a mensagem retornada pela API
+                closeModal(); // Fecha o modal
+                window.location.reload(); // Atualiza a tabela
+            })
+            .catch(error => console.error('Erro ao salvar alterações:', error));
+        }
+
+
+
+    </script>
+
+    <script src="script.js"></script>
+</body>
+</html>
